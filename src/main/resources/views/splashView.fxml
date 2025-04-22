@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<AnchorPane fx:id="splashPane" prefHeight="400.0" prefWidth="600.0"
+            style="-fx-background-color: linear-gradient(to bottom right, #2e2f52, #3b5ca5, #5fa87c, #f7c46c);"
+            xmlns="http://javafx.com/javafx/11.0.14-internal"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="controller.SplashController">
+   <children>
+      <Label alignment="CENTER" layoutY="178.0" prefHeight="45.0" prefWidth="600.0" text="PROGRAMACIÓN REACTIVA" textFill="WHITE">
+         <font>
+            <Font name="Gabriola" size="36.0" />
+         </font>
+      </Label>
+      <Label layoutX="406.0" layoutY="335.0" text="Actividad de Aprendizaje II PSP" textFill="WHITE" />
+      <Label layoutX="406.0" layoutY="357.0" text="Marta Jiménez Gámiz" textFill="WHITE" />
+   </children>
+</AnchorPane>
