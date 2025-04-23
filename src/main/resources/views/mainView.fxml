@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<SplitPane fx:id="mainPane" dividerPositions="0.12060301507537688" orientation="VERTICAL" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.14-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.MainController">
+
+    <items>
+        <VBox prefHeight="52.0" prefWidth="598.0" spacing="10">
+            <padding>
+                <Insets bottom="10" left="10" right="10" top="10" />
+            </padding>
+            <HBox spacing="10">
+                <TextField fx:id="searchField" promptText="Pokemon a buscar..." HBox.hgrow="ALWAYS" />
+                <Button fx:id="searchButton" onAction="#searchEvent" text="Buscar" />
+            </HBox>
+        </VBox>
+        <ListView fx:id="dataList" VBox.vgrow="ALWAYS" />
+    </items>
+</SplitPane>
