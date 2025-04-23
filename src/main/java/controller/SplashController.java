@@ -5,8 +5,8 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Scene;
+import javafx.scene.control.SplitPane;
 import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import utils.Constants;
 
@@ -17,7 +17,7 @@ import java.util.ResourceBundle;
 public class SplashController implements Initializable {
 
     @FXML
-    private BorderPane borderPane;
+    private SplitPane splitPane;
     @FXML
     private AnchorPane splashPane;
 
@@ -39,10 +39,10 @@ public class SplashController implements Initializable {
                     @Override
                     public void run() {
                         try{
-                            borderPane = FXMLLoader.load(getClass().getResource("/views/mainView.fxml"));
+                            splitPane = FXMLLoader.load(getClass().getResource("/views/mainView.fxml"));
 
                             Stage stage = new Stage();
-                            Scene scene = new Scene(borderPane);
+                            Scene scene = new Scene(splitPane);
 
                             stage.setTitle("Programación reactiva");
                             stage.setScene(scene);
