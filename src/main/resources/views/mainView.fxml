@@ -16,6 +16,12 @@
                 <Button fx:id="searchButton" onAction="#searchEvent" text="Buscar" />
             </HBox>
         </VBox>
-        <ListView fx:id="dataList" VBox.vgrow="ALWAYS" />
+        <TableView fx:id="dataTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="englishColumn" text="Inglés" />
+                <TableColumn fx:id="spanishColumn" text="Español" />
+                <TableColumn fx:id="isHiddenColumn" text="Está oculta" />
+            </columns>
+        </TableView>
     </items>
 </SplitPane>

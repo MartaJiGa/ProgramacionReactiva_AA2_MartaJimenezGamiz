@@ -1,6 +1,6 @@
-package model.pokemonStructures;
+package model.pokemonStructures.abilityEndpoint;
 
-public class Ability {
+public class Language {
     private String name;
 
     public String getName() {

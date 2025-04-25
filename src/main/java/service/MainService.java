@@ -10,11 +10,11 @@ import java.net.http.HttpResponse;
 
 public class MainService {
 
-    public String getPokemonData(String pokemonName) throws IOException, InterruptedException {
+    public String getPokemonData(String baseEndpoint, String dataToSearch) throws IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(Constants.POKEAPI_BASE_URL + "pokemon/" + pokemonName))
+                .uri(URI.create(Constants.POKEAPI_BASE_URL + baseEndpoint + dataToSearch))
                 .GET()
                 .build();
 
