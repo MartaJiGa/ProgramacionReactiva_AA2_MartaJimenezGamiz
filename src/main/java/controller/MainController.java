@@ -4,10 +4,7 @@ import com.google.gson.Gson;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import model.pokemonStructures.abilityEndpoint.AbilityDetail;
 import model.pokemonStructures.abilityEndpoint.NameInfo;
@@ -17,15 +14,14 @@ import model.pokemonStructures.typeEndpoint.PokemonInfo;
 import model.pokemonStructures.typeEndpoint.PokemonType;
 import model.viewStructures.TableViewDataStructure;
 import service.MainService;
+import utils.Constants;
 
 import java.io.IOException;
 
 public class MainController {
 
     @FXML
-    private TextField searchField;
-    @FXML
-    private Button searchButton;
+    private ComboBox pokemonTypeComboBox;
     @FXML
     private TableView<TableViewDataStructure> dataTable;
     @FXML
@@ -44,18 +40,17 @@ public class MainController {
     public void initialize() {
         service = new MainService();
         gson = new Gson();
-        pokemonColumn.setCellValueFactory(new PropertyValueFactory<>("pokemon"));
-        englishAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("english"));
-        spanishAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("spanish"));
-        isHiddenAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("isHidden"));
-
-        dataTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        fillPokemonTypeComboBox();
+        prepareTableView();
     }
 
     @FXML
     private void searchEvent() {
         try {
-            String jsonData = service.getPokemonData("type/", searchField.getText().toLowerCase());
+            String selectedType = pokemonTypeComboBox.getValue().toString();
+            if (selectedType == null || selectedType.isEmpty()) return;
+
+            String jsonData = service.getPokemonData("type/", Constants.POKEMON_TYPES.get(selectedType).toLowerCase());
             PokemonType pokemonType = gson.fromJson(jsonData, PokemonType.class);
 
             // Crear una lista para guardar los Pokémon y sus habilidades
@@ -76,7 +71,7 @@ public class MainController {
                     // Busco la traducción en inglés porque el nombre que me llega está completamente en minúsculas y no es tan presentable.
                     String englishName = getTranslation(jsonData, englishNameToSearch, "en");
                     String spanishName = getTranslation(jsonData, englishNameToSearch, "es");
-                    String isHiddenText = abilityInfo.isIs_hidden() ? "Verdadero" : "Falso";
+                    String isHiddenText = abilityInfo.isIs_hidden() ? "Sí" : "No";
 
                     pokemonName = pokemonName.substring(0, 1).toUpperCase() + pokemonName.substring(1).toLowerCase();
                     dataListForTableView.add(new TableViewDataStructure(pokemonName, englishName, spanishName, isHiddenText));
@@ -87,12 +82,41 @@ public class MainController {
             }
 
             dataTable.setItems(dataListForTableView);
-
-            searchField.setText("");
         } catch (Exception e) {
             e.printStackTrace();
-            searchField.setText("");
         }
+    }
+
+    private void fillPokemonTypeComboBox(){
+        pokemonTypeComboBox.getItems().addAll(
+                "Acero",
+                "Agua",
+                "Bicho",
+                "Dragón",
+                "Eléctrico",
+                "Fantasma",
+                "Fuego",
+                "Hada",
+                "Hielo",
+                "Lucha",
+                "Normal",
+                "Planta",
+                "Psíquico",
+                "Roca",
+                "Siniestro",
+                "Tierra",
+                "Veneno",
+                "Volador"
+        );
+    }
+
+    private void prepareTableView(){
+        pokemonColumn.setCellValueFactory(new PropertyValueFactory<>("pokemon"));
+        englishAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("english"));
+        spanishAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("spanish"));
+        isHiddenAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("isHidden"));
+
+        dataTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
 
     private String getTranslation(String jsonData, String englishNameToSearch, String language) throws IOException, InterruptedException {
