@@ -12,15 +12,16 @@
                 <Insets bottom="10" left="10" right="10" top="10" />
             </padding>
             <HBox spacing="10">
-                <TextField fx:id="searchField" promptText="Pokemon a buscar..." HBox.hgrow="ALWAYS" />
+                <TextField fx:id="searchField" promptText="Escribir tipo de Pokémon..." HBox.hgrow="ALWAYS" />
                 <Button fx:id="searchButton" onAction="#searchEvent" text="Buscar" />
             </HBox>
         </VBox>
         <TableView fx:id="dataTable" VBox.vgrow="ALWAYS">
             <columns>
-                <TableColumn fx:id="englishColumn" text="Inglés" />
-                <TableColumn fx:id="spanishColumn" text="Español" />
-                <TableColumn fx:id="isHiddenColumn" text="Está oculta" />
+                <TableColumn fx:id="pokemonColumn" text="Pokémon" />
+                <TableColumn fx:id="englishAbilityColumn" text="Habilidad (ing.)" />
+                <TableColumn fx:id="spanishAbilityColumn" text="Habilidad (esp.)" />
+                <TableColumn fx:id="isHiddenAbilityColumn" text="Habilidad oculta" />
             </columns>
         </TableView>
     </items>

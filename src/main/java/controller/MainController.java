@@ -13,7 +13,9 @@ import model.pokemonStructures.abilityEndpoint.AbilityDetail;
 import model.pokemonStructures.abilityEndpoint.NameInfo;
 import model.pokemonStructures.pokemonEndpoint.AbilityInfo;
 import model.pokemonStructures.pokemonEndpoint.Pokemon;
-import model.viewStructures.AbilitiesInTableView;
+import model.pokemonStructures.typeEndpoint.PokemonInfo;
+import model.pokemonStructures.typeEndpoint.PokemonType;
+import model.viewStructures.TableViewDataStructure;
 import service.MainService;
 
 import java.io.IOException;
@@ -25,13 +27,15 @@ public class MainController {
     @FXML
     private Button searchButton;
     @FXML
-    private TableView<AbilitiesInTableView> dataTable;
+    private TableView<TableViewDataStructure> dataTable;
     @FXML
-    private TableColumn<AbilitiesInTableView, String> englishColumn;
+    private TableColumn<TableViewDataStructure, String> pokemonColumn;
     @FXML
-    private TableColumn<AbilitiesInTableView, String> spanishColumn;
+    private TableColumn<TableViewDataStructure, String> englishAbilityColumn;
     @FXML
-    private TableColumn<AbilitiesInTableView, String> isHiddenColumn;
+    private TableColumn<TableViewDataStructure, String> spanishAbilityColumn;
+    @FXML
+    private TableColumn<TableViewDataStructure, String> isHiddenAbilityColumn;
 
     private MainService service;
     private Gson gson;
@@ -40,9 +44,10 @@ public class MainController {
     public void initialize() {
         service = new MainService();
         gson = new Gson();
-        englishColumn.setCellValueFactory(new PropertyValueFactory<>("english"));
-        spanishColumn.setCellValueFactory(new PropertyValueFactory<>("spanish"));
-        isHiddenColumn.setCellValueFactory(new PropertyValueFactory<>("isHidden"));
+        pokemonColumn.setCellValueFactory(new PropertyValueFactory<>("pokemon"));
+        englishAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("english"));
+        spanishAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("spanish"));
+        isHiddenAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("isHidden"));
 
         dataTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
@@ -50,24 +55,38 @@ public class MainController {
     @FXML
     private void searchEvent() {
         try {
-            String jsonData = service.getPokemonData("pokemon/", searchField.getText().toString().toLowerCase());
+            String jsonData = service.getPokemonData("type/", searchField.getText().toLowerCase());
+            PokemonType pokemonType = gson.fromJson(jsonData, PokemonType.class);
 
-            Pokemon pokemon = gson.fromJson(jsonData, Pokemon.class);
+            // Crear una lista para guardar los Pokémon y sus habilidades
+            ObservableList<TableViewDataStructure> dataListForTableView = FXCollections.observableArrayList();
 
-            ObservableList<AbilitiesInTableView> abilitiesList = FXCollections.observableArrayList();
+            // TODO: Quitar esta variable
+            int i = 0;
+            for (PokemonInfo pokemonInfo : pokemonType.getPokemon()){
+                String pokemonName = pokemonInfo.getPokemon().getName();
+                String pokemonData = service.getPokemonData("pokemon/", pokemonName);
+                Pokemon pokemon = gson.fromJson(pokemonData, Pokemon.class);
 
-            for (AbilityInfo abilityInfo : pokemon.getAbilities()) {
-                String englishNameToSearch = abilityInfo.getAbility().getName();
+                for (AbilityInfo abilityInfo : pokemon.getAbilities()) {
+                    // TODO: Quitar este i++
+                    i++;
+                    String englishNameToSearch = abilityInfo.getAbility().getName();
 
-                // Busco la traducción en inglés porque el nombre que me llega está completamente en minúsculas y no es tan presentable.
-                String englishName = getTranslation(jsonData, englishNameToSearch, "en");
-                String spanishName = getTranslation(jsonData, englishNameToSearch, "es");
-                String isHiddenText = abilityInfo.isIs_hidden() ? "Verdadero" : "Falso";
+                    // Busco la traducción en inglés porque el nombre que me llega está completamente en minúsculas y no es tan presentable.
+                    String englishName = getTranslation(jsonData, englishNameToSearch, "en");
+                    String spanishName = getTranslation(jsonData, englishNameToSearch, "es");
+                    String isHiddenText = abilityInfo.isIs_hidden() ? "Verdadero" : "Falso";
 
-                abilitiesList.add(new AbilitiesInTableView(englishName, spanishName, isHiddenText));
+                    pokemonName = pokemonName.substring(0, 1).toUpperCase() + pokemonName.substring(1).toLowerCase();
+                    dataListForTableView.add(new TableViewDataStructure(pokemonName, englishName, spanishName, isHiddenText));
+                }
+
+                // TODO: Quitar esta comprobación
+                if (i >= 20) break;
             }
 
-            dataTable.setItems(abilitiesList);
+            dataTable.setItems(dataListForTableView);
 
             searchField.setText("");
         } catch (Exception e) {
