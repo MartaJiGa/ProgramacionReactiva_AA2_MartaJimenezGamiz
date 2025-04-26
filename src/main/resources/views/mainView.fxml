@@ -24,14 +24,7 @@
                   <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
                </padding>
               </HBox>
-              <TableView fx:id="dataTable" VBox.vgrow="ALWAYS">
-                  <columns>
-                      <TableColumn fx:id="pokemonColumn" text="Pokémon" />
-                      <TableColumn fx:id="englishAbilityColumn" text="Habilidad (ing.)" />
-                      <TableColumn fx:id="spanishAbilityColumn" text="Habilidad (esp.)" />
-                      <TableColumn fx:id="isHiddenAbilityColumn" text="Habilidad oculta" />
-                  </columns>
-              </TableView>
+             <TabPane fx:id="tabPane" prefHeight="400.0" prefWidth="600.0" layoutX="20.0" layoutY="100.0" VBox.vgrow="ALWAYS" />
          </children>
       </VBox>
     </items>
