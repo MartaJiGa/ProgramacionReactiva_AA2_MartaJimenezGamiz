@@ -17,6 +17,9 @@ import service.MainService;
 import utils.Constants;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class MainController {
 
@@ -88,26 +91,9 @@ public class MainController {
     }
 
     private void fillPokemonTypeComboBox(){
-        pokemonTypeComboBox.getItems().addAll(
-                "Acero",
-                "Agua",
-                "Bicho",
-                "Dragón",
-                "Eléctrico",
-                "Fantasma",
-                "Fuego",
-                "Hada",
-                "Hielo",
-                "Lucha",
-                "Normal",
-                "Planta",
-                "Psíquico",
-                "Roca",
-                "Siniestro",
-                "Tierra",
-                "Veneno",
-                "Volador"
-        );
+        List<String> orderedPokemonTypes = new ArrayList<>(Constants.POKEMON_TYPES.keySet());
+        Collections.sort(orderedPokemonTypes);
+        pokemonTypeComboBox.getItems().addAll(orderedPokemonTypes);
     }
 
     private void prepareTableView(){
