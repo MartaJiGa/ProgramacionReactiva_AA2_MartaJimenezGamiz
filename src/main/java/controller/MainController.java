@@ -3,9 +3,12 @@ package controller;
 import com.google.gson.Gson;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import model.pokemonStructures.abilityEndpoint.AbilityDetail;
 import model.pokemonStructures.abilityEndpoint.NameInfo;
 import model.pokemonStructures.pokemonEndpoint.AbilityInfo;
@@ -27,15 +30,15 @@ public class MainController {
     @FXML
     private ComboBox pokemonTypeComboBox;
     @FXML
-    private TableView<TableViewDataStructure> dataTable;
+    private TabPane tabPane;
     @FXML
-    private TableColumn<TableViewDataStructure, String> pokemonColumn;
+    private TextField pokemonFilterTextField;
     @FXML
-    private TableColumn<TableViewDataStructure, String> englishAbilityColumn;
+    private TextField englishAbilityFilterTextField;
     @FXML
-    private TableColumn<TableViewDataStructure, String> spanishAbilityColumn;
+    private TextField spanishAbilityFilterTextField;
     @FXML
-    private TableColumn<TableViewDataStructure, String> isHiddenAbilityColumn;
+    private TextField isHiddenFilterTextField;
 
     private MainService service;
     private Gson gson;
@@ -45,19 +48,19 @@ public class MainController {
         service = new MainService();
         gson = new Gson();
         fillPokemonTypeComboBox();
-        prepareTableView();
+        configureFilterListeners();
     }
 
     @FXML
     private void searchEvent() {
         try {
-            String selectedType = pokemonTypeComboBox.getValue().toString();
-            if (selectedType == null || selectedType.isEmpty()) return;
+            String selectedPokemonType = pokemonTypeComboBox.getValue().toString();
+            if (selectedPokemonType == null || selectedPokemonType.isEmpty()) return;
 
-            String jsonData = service.getPokemonData("type/", Constants.POKEMON_TYPES.get(selectedType).toLowerCase());
-            PokemonType pokemonType = gson.fromJson(jsonData, PokemonType.class);
+            // Si la pestaña para ese tipo de Pokémon ya existe, no hacer nada
+            if (checkIfTabExists(selectedPokemonType)) return;
 
-            fillTableView(jsonData, pokemonType);
+            manageTask(selectedPokemonType);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -70,35 +73,98 @@ public class MainController {
         pokemonTypeComboBox.getItems().addAll(orderedPokemonTypes);
     }
 
-    private void prepareTableView(){
+    private void configureFilterListeners() {
+        pokemonFilterTextField.textProperty().addListener((observable, oldValue, newValue) -> filterTable());
+        englishAbilityFilterTextField.textProperty().addListener((observable, oldValue, newValue) -> filterTable());
+        spanishAbilityFilterTextField.textProperty().addListener((observable, oldValue, newValue) -> filterTable());
+        isHiddenFilterTextField.textProperty().addListener((observable, oldValue, newValue) -> filterTable());
+    }
+
+    private boolean checkIfTabExists(String pokemonType) {
+        for (Tab tab : tabPane.getTabs()) {
+            if (tab.getText().equals(pokemonType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void manageTask(String selectedPokemonType){
+        Task<Tab> loadDataTask = new Task<>() {
+            @Override
+            protected Tab call() throws Exception {
+                return createTabForPokemonType(selectedPokemonType);
+            }
+        };
+
+        loadDataTask.setOnSucceeded(workerStateEvent -> {
+            Tab tab = loadDataTask.getValue();
+            tabPane.getTabs().add(tab);
+        });
+
+        loadDataTask.setOnFailed(workerStateEvent -> {
+            loadDataTask.getException().printStackTrace();
+
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error al cargar datos");
+            alert.setHeaderText("No se pudo cargar el tipo de Pokémon: " + selectedPokemonType);
+            alert.setContentText(loadDataTask.getException().getMessage());
+            alert.showAndWait();
+        });
+
+        Thread thread = new Thread(loadDataTask);
+        // setDaemon(true) evita que la app espere a que los hilos se hayan terminado de ejecutar si se intentase cerrar la aplicación.
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private Tab createTabForPokemonType(String pokemonTypeTab) throws IOException, InterruptedException {
+        Tab tab = new Tab(pokemonTypeTab);
+
+        TableView<TableViewDataStructure> pokemonTypeTableView = new TableView<>();
+        prepareTableColumns(pokemonTypeTableView);
+
+        String jsonData = service.getPokemonData("type/", Constants.POKEMON_TYPES.get(pokemonTypeTab).toLowerCase());
+        PokemonType pokemonType = gson.fromJson(jsonData, PokemonType.class);
+        ObservableList<TableViewDataStructure> pokemonTypeDataList = FXCollections.observableArrayList();
+
+        fillTableWithPokemonData(pokemonType, pokemonTypeDataList);
+        pokemonTypeTableView.setItems(pokemonTypeDataList);
+
+        tab.setUserData(pokemonTypeDataList);
+
+        VBox vbox = new VBox();
+        VBox.setVgrow(pokemonTypeTableView, Priority.ALWAYS);
+        vbox.getChildren().add(pokemonTypeTableView);
+        tab.setContent(vbox);
+
+        return tab;
+    }
+
+    private void prepareTableColumns(TableView<TableViewDataStructure> tableView) {
+        TableColumn<TableViewDataStructure, String> pokemonColumn = new TableColumn<>("Pokémon");
+        TableColumn<TableViewDataStructure, String> englishAbilityColumn = new TableColumn<>("Habilidad (ing.)");
+        TableColumn<TableViewDataStructure, String> spanishAbilityColumn = new TableColumn<>("Habilidad (esp.)");
+        TableColumn<TableViewDataStructure, String> isHiddenAbilityColumn = new TableColumn<>("Habilidad oculta");
+
+        tableView.getColumns().addAll(pokemonColumn, englishAbilityColumn, spanishAbilityColumn, isHiddenAbilityColumn);
+        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
         pokemonColumn.setCellValueFactory(new PropertyValueFactory<>("pokemon"));
         englishAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("english"));
         spanishAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("spanish"));
         isHiddenAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("isHidden"));
-
-        dataTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
 
-    private void fillTableView(String jsonData, PokemonType pokemonType) throws IOException, InterruptedException {
-        // Crear una lista para guardar los Pokémon y sus habilidades
-        ObservableList<TableViewDataStructure> dataListForTableView = FXCollections.observableArrayList();
-
-        // TODO: Quitar esta variable
-        int i = 0;
-        for (PokemonInfo pokemonInfo : pokemonType.getPokemon()){
+    private void fillTableWithPokemonData(PokemonType pokemonType, ObservableList<TableViewDataStructure> dataList) throws IOException, InterruptedException {
+        for (PokemonInfo pokemonInfo : pokemonType.getPokemon()) {
             Pokemon pokemon = getPokemon(pokemonInfo);
 
             for (AbilityInfo abilityInfo : pokemon.getAbilities()) {
-                TableViewRow tableViewRow = getTableViewRow(jsonData, abilityInfo, pokemon.getName());
-                dataListForTableView.add(new TableViewDataStructure(tableViewRow.getPokemonName(), tableViewRow.getEnglishName(), tableViewRow.getSpanishName(), tableViewRow.getIsHiddenText()));
+                TableViewRow tableViewRow = getTableViewRow(abilityInfo, pokemon.getName());
+                dataList.add(new TableViewDataStructure(tableViewRow.getPokemonName(), tableViewRow.getEnglishName(), tableViewRow.getSpanishName(), tableViewRow.getIsHiddenText()));
             }
-
-            // TODO: Quitar esta comprobación y este i++
-            i++;
-            if (i >= 5) break;
         }
-
-        dataTable.setItems(dataListForTableView);
     }
 
     private Pokemon getPokemon(PokemonInfo pokemonInfo) throws IOException, InterruptedException {
@@ -106,12 +172,10 @@ public class MainController {
         return gson.fromJson(pokemonData, Pokemon.class);
     }
 
-    private TableViewRow getTableViewRow(String jsonData, AbilityInfo abilityInfo, String pokemonName) throws IOException, InterruptedException {
+    private TableViewRow getTableViewRow(AbilityInfo abilityInfo, String pokemonName) throws IOException, InterruptedException {
         String englishNameToSearch = abilityInfo.getAbility().getName();
-
-        // Busco la traducción en inglés porque el nombre que me llega está completamente en minúsculas y no es tan presentable.
-        String englishName = getTranslation(jsonData, englishNameToSearch, "en");
-        String spanishName = getTranslation(jsonData, englishNameToSearch, "es");
+        String englishName = getAbilityTranslation(englishNameToSearch, "en");
+        String spanishName = getAbilityTranslation(englishNameToSearch, "es");
         String isHiddenText = abilityInfo.isIs_hidden() ? "Sí" : "No";
 
         pokemonName = pokemonName.substring(0, 1).toUpperCase() + pokemonName.substring(1).toLowerCase();
@@ -119,14 +183,50 @@ public class MainController {
         return new TableViewRow(pokemonName, englishName, spanishName, isHiddenText);
     }
 
-    private String getTranslation(String jsonData, String englishNameToSearch, String language) throws IOException, InterruptedException {
-        jsonData = service.getPokemonData("ability/", englishNameToSearch);
+    private String getAbilityTranslation(String abilityName, String language) throws IOException, InterruptedException {
+        String jsonData = service.getPokemonData("ability/", abilityName);
         AbilityDetail abilityDetail = gson.fromJson(jsonData, AbilityDetail.class);
-
         return abilityDetail.getNames().stream()
                 .filter(nameInfo -> language.equals(nameInfo.getLanguage().getName()))
                 .map(NameInfo::getName)
                 .findFirst()
                 .orElse("No encontrado");
+    }
+
+    private void filterTable() {
+        String pokemonFilter = pokemonFilterTextField.getText().toLowerCase();
+        String englishAbilityFilter = englishAbilityFilterTextField.getText().toLowerCase();
+        String spanishAbilityFilter = spanishAbilityFilterTextField.getText().toLowerCase();
+        String isHiddenFilter = isHiddenFilterTextField.getText().toLowerCase();
+
+        for (Tab tab : tabPane.getTabs()) {
+            VBox vbox = (VBox) tab.getContent();
+            TableView<TableViewDataStructure> tableView = (TableView<TableViewDataStructure>) vbox.getChildren().get(0);
+
+            ObservableList<TableViewDataStructure> originalList = (ObservableList<TableViewDataStructure>) tab.getUserData();
+            if (originalList == null) continue;
+
+            ObservableList<TableViewDataStructure> filteredList = FXCollections.observableArrayList();
+
+            for (TableViewDataStructure item : originalList) {
+                boolean matches = true;
+
+                if (!pokemonFilter.isEmpty() && !item.getPokemon().toLowerCase().contains(pokemonFilter)) {
+                    matches = false;
+                }
+                if (!englishAbilityFilter.isEmpty() && !item.getEnglish().toLowerCase().contains(englishAbilityFilter)) {
+                    matches = false;
+                }
+                if (!spanishAbilityFilter.isEmpty() && !item.getSpanish().toLowerCase().contains(spanishAbilityFilter)) {
+                    matches = false;
+                }
+                if (!isHiddenFilter.isEmpty() && !item.getIsHidden().toLowerCase().contains(isHiddenFilter)) {
+                    matches = false;
+                }
+
+                if (matches) filteredList.add(item);
+            }
+            tableView.setItems(filteredList);
+        }
     }
 }
