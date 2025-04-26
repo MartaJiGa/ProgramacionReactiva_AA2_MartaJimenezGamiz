@@ -4,25 +4,35 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<SplitPane fx:id="mainPane" dividerPositions="0.12060301507537688" orientation="VERTICAL" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.14-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.MainController">
+<SplitPane fx:id="mainPane" orientation="VERTICAL" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.14-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.MainController">
 
     <items>
-        <VBox prefHeight="52.0" prefWidth="598.0" spacing="10">
-            <padding>
-                <Insets bottom="10" left="10" right="10" top="10" />
-            </padding>
-            <HBox spacing="10">
-                <ComboBox fx:id="pokemonTypeComboBox" promptText="Seleccionar tipo de Pokémon..." HBox.hgrow="ALWAYS" />
-                <Button fx:id="searchButton" onAction="#searchEvent" text="Buscar" />
-            </HBox>
-        </VBox>
-        <TableView fx:id="dataTable" VBox.vgrow="ALWAYS">
-            <columns>
-                <TableColumn fx:id="pokemonColumn" text="Pokémon" />
-                <TableColumn fx:id="englishAbilityColumn" text="Habilidad (ing.)" />
-                <TableColumn fx:id="spanishAbilityColumn" text="Habilidad (esp.)" />
-                <TableColumn fx:id="isHiddenAbilityColumn" text="Habilidad oculta" />
-            </columns>
-        </TableView>
+      <VBox prefHeight="200.0" prefWidth="100.0">
+         <children>
+               <HBox spacing="10">
+                   <ComboBox fx:id="pokemonTypeComboBox" onAction="#searchEvent" prefWidth="211.0" promptText="Seleccionar tipo de Pokémon" HBox.hgrow="ALWAYS">
+                  <HBox.margin>
+                     <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                  </HBox.margin></ComboBox>
+               </HBox>
+              <HBox spacing="10">
+                  <TextField fx:id="pokemonFilterTextField" promptText="Filtrar Pokémon" HBox.hgrow="ALWAYS" />
+                  <TextField fx:id="englishAbilityFilterTextField" promptText="Filtrar Habilidad (ing.)" HBox.hgrow="ALWAYS" />
+                  <TextField fx:id="spanishAbilityFilterTextField" promptText="Filtrar Habilidad (esp.)" HBox.hgrow="ALWAYS" />
+                  <TextField fx:id="isHiddenFilterTextField" promptText="Filtrar Habilidad oculta" HBox.hgrow="ALWAYS" />
+               <padding>
+                  <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+               </padding>
+              </HBox>
+              <TableView fx:id="dataTable" VBox.vgrow="ALWAYS">
+                  <columns>
+                      <TableColumn fx:id="pokemonColumn" text="Pokémon" />
+                      <TableColumn fx:id="englishAbilityColumn" text="Habilidad (ing.)" />
+                      <TableColumn fx:id="spanishAbilityColumn" text="Habilidad (esp.)" />
+                      <TableColumn fx:id="isHiddenAbilityColumn" text="Habilidad oculta" />
+                  </columns>
+              </TableView>
+         </children>
+      </VBox>
     </items>
 </SplitPane>

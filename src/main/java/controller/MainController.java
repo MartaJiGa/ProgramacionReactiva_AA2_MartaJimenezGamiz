@@ -36,9 +36,18 @@ public class MainController {
     private TableColumn<TableViewDataStructure, String> spanishAbilityColumn;
     @FXML
     private TableColumn<TableViewDataStructure, String> isHiddenAbilityColumn;
+    @FXML
+    private TextField pokemonFilterTextField;
+    @FXML
+    private TextField englishAbilityFilterTextField;
+    @FXML
+    private TextField spanishAbilityFilterTextField;
+    @FXML
+    private TextField isHiddenFilterTextField;
 
     private MainService service;
     private Gson gson;
+    private ObservableList<TableViewDataStructure> originalDataList = FXCollections.observableArrayList();
 
     @FXML
     public void initialize() {
@@ -46,6 +55,7 @@ public class MainController {
         gson = new Gson();
         fillPokemonTypeComboBox();
         prepareTableView();
+        configureFilters();
     }
 
     @FXML
@@ -53,6 +63,8 @@ public class MainController {
         try {
             String selectedType = pokemonTypeComboBox.getValue().toString();
             if (selectedType == null || selectedType.isEmpty()) return;
+
+            originalDataList.clear();
 
             String jsonData = service.getPokemonData("type/", Constants.POKEMON_TYPES.get(selectedType).toLowerCase());
             PokemonType pokemonType = gson.fromJson(jsonData, PokemonType.class);
@@ -79,10 +91,14 @@ public class MainController {
         dataTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
     }
 
-    private void fillTableView(String jsonData, PokemonType pokemonType) throws IOException, InterruptedException {
-        // Crear una lista para guardar los Pokémon y sus habilidades
-        ObservableList<TableViewDataStructure> dataListForTableView = FXCollections.observableArrayList();
+    private void configureFilters() {
+        pokemonFilterTextField.textProperty().addListener((observable, oldValue, newValue) -> filterTable());
+        englishAbilityFilterTextField.textProperty().addListener((observable, oldValue, newValue) -> filterTable());
+        spanishAbilityFilterTextField.textProperty().addListener((observable, oldValue, newValue) -> filterTable());
+        isHiddenFilterTextField.textProperty().addListener((observable, oldValue, newValue) -> filterTable());
+    }
 
+    private void fillTableView(String jsonData, PokemonType pokemonType) throws IOException, InterruptedException {
         // TODO: Quitar esta variable
         int i = 0;
         for (PokemonInfo pokemonInfo : pokemonType.getPokemon()){
@@ -90,7 +106,7 @@ public class MainController {
 
             for (AbilityInfo abilityInfo : pokemon.getAbilities()) {
                 TableViewRow tableViewRow = getTableViewRow(jsonData, abilityInfo, pokemon.getName());
-                dataListForTableView.add(new TableViewDataStructure(tableViewRow.getPokemonName(), tableViewRow.getEnglishName(), tableViewRow.getSpanishName(), tableViewRow.getIsHiddenText()));
+                originalDataList.add(new TableViewDataStructure(tableViewRow.getPokemonName(), tableViewRow.getEnglishName(), tableViewRow.getSpanishName(), tableViewRow.getIsHiddenText()));
             }
 
             // TODO: Quitar esta comprobación y este i++
@@ -98,7 +114,7 @@ public class MainController {
             if (i >= 5) break;
         }
 
-        dataTable.setItems(dataListForTableView);
+        dataTable.setItems(originalDataList);
     }
 
     private Pokemon getPokemon(PokemonInfo pokemonInfo) throws IOException, InterruptedException {
@@ -128,5 +144,37 @@ public class MainController {
                 .map(NameInfo::getName)
                 .findFirst()
                 .orElse("No encontrado");
+    }
+
+    private void filterTable() {
+        String pokemonFilter = pokemonFilterTextField.getText().toLowerCase();
+        String englishFilter = englishAbilityFilterTextField.getText().toLowerCase();
+        String spanishFilter = spanishAbilityFilterTextField.getText().toLowerCase();
+        String isHiddenFilter = isHiddenFilterTextField.getText().toLowerCase();
+
+        ObservableList<TableViewDataStructure> filteredList = FXCollections.observableArrayList();
+
+        for (TableViewDataStructure row : originalDataList) {
+            boolean matches = true;
+
+            if (!row.getPokemon().toLowerCase().contains(pokemonFilter)) {
+                matches = false;
+            }
+            if (!row.getEnglish().toLowerCase().contains(englishFilter)) {
+                matches = false;
+            }
+            if (!row.getSpanish().toLowerCase().contains(spanishFilter)) {
+                matches = false;
+            }
+            if (!row.getIsHidden().toLowerCase().contains(isHiddenFilter)) {
+                matches = false;
+            }
+
+            if (matches) {
+                filteredList.add(row);
+            }
+        }
+
+        dataTable.setItems(filteredList);
     }
 }
