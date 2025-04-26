@@ -3,6 +3,7 @@ package controller;
 import com.google.gson.Gson;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -59,8 +60,7 @@ public class MainController {
             // Si la pestaña para ese tipo de Pokémon ya existe, no hacer nada
             if (checkIfTabExists(selectedPokemonType)) return;
 
-            Tab newTab = createTabForPokemonType(selectedPokemonType);
-            tabPane.getTabs().add(newTab);
+            manageTask(selectedPokemonType);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -87,6 +87,35 @@ public class MainController {
             }
         }
         return false;
+    }
+
+    private void manageTask(String selectedPokemonType){
+        Task<Tab> loadDataTask = new Task<>() {
+            @Override
+            protected Tab call() throws Exception {
+                return createTabForPokemonType(selectedPokemonType);
+            }
+        };
+
+        loadDataTask.setOnSucceeded(workerStateEvent -> {
+            Tab tab = loadDataTask.getValue();
+            tabPane.getTabs().add(tab);
+        });
+
+        loadDataTask.setOnFailed(workerStateEvent -> {
+            loadDataTask.getException().printStackTrace();
+
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error al cargar datos");
+            alert.setHeaderText("No se pudo cargar el tipo de Pokémon: " + selectedPokemonType);
+            alert.setContentText(loadDataTask.getException().getMessage());
+            alert.showAndWait();
+        });
+
+        Thread thread = new Thread(loadDataTask);
+        // setDaemon(true) evita que la app espere a que los hilos se hayan terminado de ejecutar si se intentase cerrar la aplicación.
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private Tab createTabForPokemonType(String pokemonTypeTab) throws IOException, InterruptedException {
