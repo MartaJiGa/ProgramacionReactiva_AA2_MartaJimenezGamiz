@@ -1,4 +1,4 @@
-package model.pokemonStructures;
+package model.pokemonStructures.pokemonEndpoint;
 
 import java.util.List;
 

@@ -12,10 +12,17 @@
                 <Insets bottom="10" left="10" right="10" top="10" />
             </padding>
             <HBox spacing="10">
-                <TextField fx:id="searchField" promptText="Pokemon a buscar..." HBox.hgrow="ALWAYS" />
+                <ComboBox fx:id="pokemonTypeComboBox" promptText="Seleccionar tipo de Pokémon..." HBox.hgrow="ALWAYS" />
                 <Button fx:id="searchButton" onAction="#searchEvent" text="Buscar" />
             </HBox>
         </VBox>
-        <ListView fx:id="dataList" VBox.vgrow="ALWAYS" />
+        <TableView fx:id="dataTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="pokemonColumn" text="Pokémon" />
+                <TableColumn fx:id="englishAbilityColumn" text="Habilidad (ing.)" />
+                <TableColumn fx:id="spanishAbilityColumn" text="Habilidad (esp.)" />
+                <TableColumn fx:id="isHiddenAbilityColumn" text="Habilidad oculta" />
+            </columns>
+        </TableView>
     </items>
 </SplitPane>
