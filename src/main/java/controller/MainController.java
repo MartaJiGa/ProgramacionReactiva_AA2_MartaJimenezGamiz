@@ -13,6 +13,7 @@ import model.pokemonStructures.pokemonEndpoint.Pokemon;
 import model.pokemonStructures.typeEndpoint.PokemonInfo;
 import model.pokemonStructures.typeEndpoint.PokemonType;
 import model.viewStructures.TableViewDataStructure;
+import model.viewStructures.TableViewRow;
 import service.MainService;
 import utils.Constants;
 
@@ -56,35 +57,8 @@ public class MainController {
             String jsonData = service.getPokemonData("type/", Constants.POKEMON_TYPES.get(selectedType).toLowerCase());
             PokemonType pokemonType = gson.fromJson(jsonData, PokemonType.class);
 
-            // Crear una lista para guardar los Pokémon y sus habilidades
-            ObservableList<TableViewDataStructure> dataListForTableView = FXCollections.observableArrayList();
+            fillTableView(jsonData, pokemonType);
 
-            // TODO: Quitar esta variable
-            int i = 0;
-            for (PokemonInfo pokemonInfo : pokemonType.getPokemon()){
-                String pokemonName = pokemonInfo.getPokemon().getName();
-                String pokemonData = service.getPokemonData("pokemon/", pokemonName);
-                Pokemon pokemon = gson.fromJson(pokemonData, Pokemon.class);
-
-                for (AbilityInfo abilityInfo : pokemon.getAbilities()) {
-                    // TODO: Quitar este i++
-                    i++;
-                    String englishNameToSearch = abilityInfo.getAbility().getName();
-
-                    // Busco la traducción en inglés porque el nombre que me llega está completamente en minúsculas y no es tan presentable.
-                    String englishName = getTranslation(jsonData, englishNameToSearch, "en");
-                    String spanishName = getTranslation(jsonData, englishNameToSearch, "es");
-                    String isHiddenText = abilityInfo.isIs_hidden() ? "Sí" : "No";
-
-                    pokemonName = pokemonName.substring(0, 1).toUpperCase() + pokemonName.substring(1).toLowerCase();
-                    dataListForTableView.add(new TableViewDataStructure(pokemonName, englishName, spanishName, isHiddenText));
-                }
-
-                // TODO: Quitar esta comprobación
-                if (i >= 20) break;
-            }
-
-            dataTable.setItems(dataListForTableView);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -103,6 +77,46 @@ public class MainController {
         isHiddenAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("isHidden"));
 
         dataTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+    }
+
+    private void fillTableView(String jsonData, PokemonType pokemonType) throws IOException, InterruptedException {
+        // Crear una lista para guardar los Pokémon y sus habilidades
+        ObservableList<TableViewDataStructure> dataListForTableView = FXCollections.observableArrayList();
+
+        // TODO: Quitar esta variable
+        int i = 0;
+        for (PokemonInfo pokemonInfo : pokemonType.getPokemon()){
+            Pokemon pokemon = getPokemon(pokemonInfo);
+
+            for (AbilityInfo abilityInfo : pokemon.getAbilities()) {
+                TableViewRow tableViewRow = getTableViewRow(jsonData, abilityInfo, pokemon.getName());
+                dataListForTableView.add(new TableViewDataStructure(tableViewRow.getPokemonName(), tableViewRow.getEnglishName(), tableViewRow.getSpanishName(), tableViewRow.getIsHiddenText()));
+            }
+
+            // TODO: Quitar esta comprobación y este i++
+            i++;
+            if (i >= 5) break;
+        }
+
+        dataTable.setItems(dataListForTableView);
+    }
+
+    private Pokemon getPokemon(PokemonInfo pokemonInfo) throws IOException, InterruptedException {
+        String pokemonData = service.getPokemonData("pokemon/", pokemonInfo.getPokemon().getName());
+        return gson.fromJson(pokemonData, Pokemon.class);
+    }
+
+    private TableViewRow getTableViewRow(String jsonData, AbilityInfo abilityInfo, String pokemonName) throws IOException, InterruptedException {
+        String englishNameToSearch = abilityInfo.getAbility().getName();
+
+        // Busco la traducción en inglés porque el nombre que me llega está completamente en minúsculas y no es tan presentable.
+        String englishName = getTranslation(jsonData, englishNameToSearch, "en");
+        String spanishName = getTranslation(jsonData, englishNameToSearch, "es");
+        String isHiddenText = abilityInfo.isIs_hidden() ? "Sí" : "No";
+
+        pokemonName = pokemonName.substring(0, 1).toUpperCase() + pokemonName.substring(1).toLowerCase();
+
+        return new TableViewRow(pokemonName, englishName, spanishName, isHiddenText);
     }
 
     private String getTranslation(String jsonData, String englishNameToSearch, String language) throws IOException, InterruptedException {
