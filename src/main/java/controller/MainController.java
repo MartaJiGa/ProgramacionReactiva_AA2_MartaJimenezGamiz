@@ -24,6 +24,8 @@ public class MainController {
     @FXML
     private ComboBox pokemonTypeComboBox;
     @FXML
+    private TextField textSearch;
+    @FXML
     private TabPane tabPane;
     @FXML
     private TextField pokemonFilterTextField;
@@ -44,7 +46,7 @@ public class MainController {
     }
 
     @FXML
-    private void searchEvent() {
+    private void getPokemonDataEvent() {
         try {
             String selectedPokemonType = pokemonTypeComboBox.getValue().toString();
             if (selectedPokemonType == null || selectedPokemonType.isEmpty()) return;
@@ -57,6 +59,50 @@ public class MainController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @FXML
+    private void searchWordEvent() {
+        try {
+            String searchWord = textSearch.getText();
+            if(searchWord.isEmpty()) return;
+
+            String resultMessage = "«" + searchWord + "» se encuentra en:\n";
+            String lowerCaseWord = textSearch.getText().toLowerCase();
+
+            boolean found = false;
+
+            for (Tab tab : tabPane.getTabs()) {
+                VBox vbox = (VBox) tab.getContent();
+                TableView<TableViewDataStructure> tableView = (TableView<TableViewDataStructure>) vbox.getChildren().get(0);
+
+                ObservableList<TableViewDataStructure> tableData = tableView.getItems();
+                for (TableViewDataStructure row : tableData) {
+                    if (row.getPokemon().toLowerCase().contains(lowerCaseWord) ||
+                        row.getEnglish().toLowerCase().contains(lowerCaseWord) ||
+                        row.getSpanish().toLowerCase().contains(lowerCaseWord) ||
+                        row.getIsHidden().toLowerCase().contains(lowerCaseWord)) {
+
+                        resultMessage += "\t- " + tab.getText() + "\n";
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            if (found) showSearchPopup(resultMessage.toString());
+            else showSearchPopup("No se ha encontrado el término «" + searchWord + "».");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void showSearchPopup(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Resultados de la búsqueda");
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private void fillPokemonTypeComboBox(){
