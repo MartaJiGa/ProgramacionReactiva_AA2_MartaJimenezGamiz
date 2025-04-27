@@ -1,6 +1,6 @@
 package controller;
 
-import com.google.gson.Gson;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -9,18 +9,12 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import model.pokemonStructures.abilityEndpoint.AbilityDetail;
 import model.pokemonStructures.abilityEndpoint.NameInfo;
-import model.pokemonStructures.pokemonEndpoint.AbilityInfo;
-import model.pokemonStructures.pokemonEndpoint.Pokemon;
-import model.pokemonStructures.typeEndpoint.PokemonInfo;
-import model.pokemonStructures.typeEndpoint.PokemonType;
 import model.viewStructures.TableViewDataStructure;
 import model.viewStructures.TableViewRow;
 import service.MainService;
 import utils.Constants;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,12 +35,10 @@ public class MainController {
     private TextField isHiddenFilterTextField;
 
     private MainService service;
-    private Gson gson;
 
     @FXML
     public void initialize() {
         service = new MainService();
-        gson = new Gson();
         fillPokemonTypeComboBox();
         configureFilterListeners();
     }
@@ -103,8 +95,6 @@ public class MainController {
         });
 
         loadDataTask.setOnFailed(workerStateEvent -> {
-            loadDataTask.getException().printStackTrace();
-
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Error al cargar datos");
             alert.setHeaderText("No se pudo cargar el tipo de Pokémon: " + selectedPokemonType);
@@ -118,19 +108,17 @@ public class MainController {
         thread.start();
     }
 
-    private Tab createTabForPokemonType(String pokemonTypeTab) throws IOException, InterruptedException {
+    private Tab createTabForPokemonType(String pokemonTypeTab) {
         Tab tab = new Tab(pokemonTypeTab);
 
         TableView<TableViewDataStructure> pokemonTypeTableView = new TableView<>();
         prepareTableColumns(pokemonTypeTableView);
 
-        String jsonData = service.getPokemonData("type/", Constants.POKEMON_TYPES.get(pokemonTypeTab).toLowerCase());
-        PokemonType pokemonType = gson.fromJson(jsonData, PokemonType.class);
         ObservableList<TableViewDataStructure> pokemonTypeDataList = FXCollections.observableArrayList();
 
-        fillTableWithPokemonData(pokemonType, pokemonTypeDataList);
-        pokemonTypeTableView.setItems(pokemonTypeDataList);
+        loadPokemonData(pokemonTypeTab, pokemonTypeDataList);
 
+        pokemonTypeTableView.setItems(pokemonTypeDataList);
         tab.setUserData(pokemonTypeDataList);
 
         VBox vbox = new VBox();
@@ -156,38 +144,51 @@ public class MainController {
         isHiddenAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("isHidden"));
     }
 
-    private void fillTableWithPokemonData(PokemonType pokemonType, ObservableList<TableViewDataStructure> dataList) throws IOException, InterruptedException {
-        for (PokemonInfo pokemonInfo : pokemonType.getPokemon()) {
-            Pokemon pokemon = getPokemon(pokemonInfo);
-
-            for (AbilityInfo abilityInfo : pokemon.getAbilities()) {
-                TableViewRow tableViewRow = getTableViewRow(abilityInfo, pokemon.getName());
-                dataList.add(new TableViewDataStructure(tableViewRow.getPokemonName(), tableViewRow.getEnglishName(), tableViewRow.getSpanishName(), tableViewRow.getIsHiddenText()));
-            }
-        }
+    private void loadPokemonData(String pokemonTypeTab, ObservableList<TableViewDataStructure> pokemonTypeDataList) {
+        service.getPokemonName(Constants.POKEMON_TYPES.get(pokemonTypeTab).toLowerCase())
+                .flatMap(pokemonData -> service.getPokemonAbility(pokemonData.getName())
+                        .flatMap(abilityInfo -> service.getPokemonAbilityTranslation(abilityInfo.getAbility().getName())
+                                .toList()
+                                .map(translations -> new TableViewRow(pokemonData.getName(), abilityInfo, translations))
+                                .toObservable()
+                        )
+                )
+                .subscribe(
+                        tableViewRow -> Platform.runLater(() -> {
+                            processAbilityInfo(tableViewRow, pokemonTypeDataList);
+                        }),
+                        this::manageError
+                );
     }
 
-    private Pokemon getPokemon(PokemonInfo pokemonInfo) throws IOException, InterruptedException {
-        String pokemonData = service.getPokemonData("pokemon/", pokemonInfo.getPokemon().getName());
-        return gson.fromJson(pokemonData, Pokemon.class);
+    private void processAbilityInfo(TableViewRow tableViewRow, ObservableList<TableViewDataStructure> pokemonTypeDataList) {
+        String englishName = getTranslationName(tableViewRow.getTranslations(), "en");
+        String spanishName = getTranslationName(tableViewRow.getTranslations(), "es");
+        String isHiddenText = tableViewRow.getAbilityInfo().is_hidden() ? "Sí" : "No";
+
+        String formattedPokemonName = tableViewRow.getPokemonName().substring(0, 1).toUpperCase() + tableViewRow.getPokemonName().substring(1).toLowerCase();
+
+        pokemonTypeDataList.add(new TableViewDataStructure(
+                formattedPokemonName,
+                englishName,
+                spanishName,
+                isHiddenText
+        ));
     }
 
-    private TableViewRow getTableViewRow(AbilityInfo abilityInfo, String pokemonName) throws IOException, InterruptedException {
-        String englishNameToSearch = abilityInfo.getAbility().getName();
-        String englishName = getAbilityTranslation(englishNameToSearch, "en");
-        String spanishName = getAbilityTranslation(englishNameToSearch, "es");
-        String isHiddenText = abilityInfo.isIs_hidden() ? "Sí" : "No";
-
-        pokemonName = pokemonName.substring(0, 1).toUpperCase() + pokemonName.substring(1).toLowerCase();
-
-        return new TableViewRow(pokemonName, englishName, spanishName, isHiddenText);
+    private void manageError(Throwable error) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Error");
+            alert.setHeaderText("Ha habido un error al obtener los datos");
+            alert.setContentText(error.getMessage());
+            alert.showAndWait();
+        });
     }
 
-    private String getAbilityTranslation(String abilityName, String language) throws IOException, InterruptedException {
-        String jsonData = service.getPokemonData("ability/", abilityName);
-        AbilityDetail abilityDetail = gson.fromJson(jsonData, AbilityDetail.class);
-        return abilityDetail.getNames().stream()
-                .filter(nameInfo -> language.equals(nameInfo.getLanguage().getName()))
+    private String getTranslationName(List<NameInfo> translations, String lang) {
+        return translations.stream()
+                .filter(nameInfo -> nameInfo.getLanguage().getName().equals(lang))
                 .map(NameInfo::getName)
                 .findFirst()
                 .orElse("No encontrado");
@@ -223,7 +224,6 @@ public class MainController {
                 if (!isHiddenFilter.isEmpty() && !item.getIsHidden().toLowerCase().contains(isHiddenFilter)) {
                     matches = false;
                 }
-
                 if (matches) filteredList.add(item);
             }
             tableView.setItems(filteredList);
