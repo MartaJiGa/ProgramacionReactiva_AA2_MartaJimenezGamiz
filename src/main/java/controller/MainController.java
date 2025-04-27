@@ -22,6 +22,8 @@ import java.util.List;
 public class MainController {
 
     @FXML
+    private SplitPane mainPane;
+    @FXML
     private ComboBox pokemonTypeComboBox;
     @FXML
     private TextField textSearch;
@@ -43,6 +45,14 @@ public class MainController {
         service = new MainService();
         fillPokemonTypeComboBox();
         configureFilterListeners();
+
+        Platform.runLater(() -> {
+            mainPane.getScene().getWindow().setOnCloseRequest(event -> {
+                if (service != null) {
+                    service.shutdown();
+                }
+            });
+        });
     }
 
     @FXML

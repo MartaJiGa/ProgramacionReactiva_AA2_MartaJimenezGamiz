@@ -16,13 +16,16 @@ import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 import utils.Constants;
 
+import java.io.IOException;
+
 public class MainService {
 
     private Retrofit retrofit;
     private PokemonAPI pokemonAPI;
+    private OkHttpClient client;
 
     public MainService() {
-        OkHttpClient client = new OkHttpClient.Builder()
+        client = new OkHttpClient.Builder()
                 .build();
 
         Gson gson = new GsonBuilder()
@@ -37,6 +40,18 @@ public class MainService {
                 .build();
 
         pokemonAPI = retrofit.create(PokemonAPI.class);
+    }
+
+    public void shutdown() {
+        client.dispatcher().executorService().shutdown();
+        client.connectionPool().evictAll();
+        if (client.cache() != null) {
+            try {
+                client.cache().close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public Observable<PokemonData> getPokemonName(String word) {
