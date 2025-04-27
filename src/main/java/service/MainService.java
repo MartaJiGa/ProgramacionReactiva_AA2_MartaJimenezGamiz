@@ -3,6 +3,8 @@ package service;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.disposables.Disposable;
 import model.pokemonStructures.abilityEndpoint.AbilityDetail;
 import model.pokemonStructures.abilityEndpoint.NameInfo;
 import model.pokemonStructures.pokemonEndpoint.AbilityInfo;
@@ -23,6 +25,7 @@ public class MainService {
     private Retrofit retrofit;
     private PokemonAPI pokemonAPI;
     private OkHttpClient client;
+    private CompositeDisposable disposables = new CompositeDisposable();
 
     public MainService() {
         client = new OkHttpClient.Builder()
@@ -42,7 +45,14 @@ public class MainService {
         pokemonAPI = retrofit.create(PokemonAPI.class);
     }
 
+    public void addDisposable(Disposable disposable) {
+        disposables.add(disposable);
+    }
+
     public void shutdown() {
+        if (disposables != null && !disposables.isDisposed()) {
+            disposables.dispose();
+        }
         client.dispatcher().executorService().shutdown();
         client.connectionPool().evictAll();
         if (client.cache() != null) {

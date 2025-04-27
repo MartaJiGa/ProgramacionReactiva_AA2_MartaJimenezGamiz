@@ -1,5 +1,6 @@
 package controller;
 
+import io.reactivex.rxjava3.disposables.Disposable;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -201,7 +202,7 @@ public class MainController {
     }
 
     private void loadPokemonData(String pokemonTypeTab, ObservableList<TableViewDataStructure> pokemonTypeDataList) {
-        service.getPokemonName(Constants.POKEMON_TYPES.get(pokemonTypeTab).toLowerCase())
+        Disposable disposable = service.getPokemonName(Constants.POKEMON_TYPES.get(pokemonTypeTab).toLowerCase())
                 .flatMap(pokemonData -> service.getPokemonAbility(pokemonData.getName())
                         .flatMap(abilityInfo -> service.getPokemonAbilityTranslation(abilityInfo.getAbility().getName())
                                 .toList()
@@ -215,6 +216,8 @@ public class MainController {
                         }),
                         this::manageError
                 );
+
+        service.addDisposable(disposable);
     }
 
     private void processAbilityInfo(TableViewRow tableViewRow, ObservableList<TableViewDataStructure> pokemonTypeDataList) {
