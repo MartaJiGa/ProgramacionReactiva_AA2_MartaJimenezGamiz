@@ -11,6 +11,8 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -209,14 +211,16 @@ public class MainController {
         TableColumn<TableViewDataStructure, String> englishAbilityColumn = new TableColumn<>("Habilidad (ing.)");
         TableColumn<TableViewDataStructure, String> spanishAbilityColumn = new TableColumn<>("Habilidad (esp.)");
         TableColumn<TableViewDataStructure, String> isHiddenAbilityColumn = new TableColumn<>("Habilidad oculta");
+        TableColumn<TableViewDataStructure, ImageView> pokemonImageColumn = new TableColumn<>("Imagen");
 
-        tableView.getColumns().addAll(pokemonColumn, englishAbilityColumn, spanishAbilityColumn, isHiddenAbilityColumn);
+        tableView.getColumns().addAll(pokemonColumn, englishAbilityColumn, spanishAbilityColumn, isHiddenAbilityColumn, pokemonImageColumn);
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         pokemonColumn.setCellValueFactory(new PropertyValueFactory<>("pokemon"));
         englishAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("english"));
         spanishAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("spanish"));
         isHiddenAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("isHidden"));
+        pokemonImageColumn.setCellValueFactory(new PropertyValueFactory<>("pokemonImage"));
     }
 
     private void loadPokemonData(String pokemonTypeTab, ObservableList<TableViewDataStructure> pokemonTypeDataList, ProgressBar progressBar, Label progressLabel) {
@@ -268,12 +272,34 @@ public class MainController {
 
         String formattedPokemonName = tableViewRow.getPokemonName().substring(0, 1).toUpperCase() + tableViewRow.getPokemonName().substring(1).toLowerCase();
 
-        pokemonTypeDataList.add(new TableViewDataStructure(
-                formattedPokemonName,
-                englishName,
-                spanishName,
-                isHiddenText
-        ));
+        service.getPokemonImageData(tableViewRow.getPokemonName())
+                .subscribe(pokemon -> {
+                    String imageUrl = pokemon.getSprites().getImageType().getOfficialArtwork().getFrontDefault();
+                    ImageView imageView;
+
+                    if (imageUrl != null && !imageUrl.isEmpty()) {
+                        ImageView imageViewWithUrl = new ImageView(new Image(imageUrl));
+                        imageView = createPokemonImageView(imageViewWithUrl);
+                    } else {
+                        ImageView imageViewNoUrl = new ImageView();
+                        imageView = createPokemonImageView(imageViewNoUrl);
+                    }
+
+                    Platform.runLater(() -> pokemonTypeDataList.add(new TableViewDataStructure(
+                            formattedPokemonName,
+                            englishName,
+                            spanishName,
+                            isHiddenText,
+                            imageView
+                    )));
+                }, this::manageError);
+    }
+
+    private ImageView createPokemonImageView(ImageView imageView) {
+        imageView.setPreserveRatio(true);
+        imageView.setFitWidth(150);
+        imageView.setFitHeight(150);
+        return imageView;
     }
 
     private void manageError(Throwable error) {

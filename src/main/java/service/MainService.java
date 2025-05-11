@@ -83,4 +83,8 @@ public class MainService {
                     return language.equals("en") || language.equals("es");
                 });
     }
+
+    public Observable<Pokemon> getPokemonImageData(String pokemonName) {
+        return pokemonAPI.getPokemonData(pokemonName);
+    }
 }
