@@ -1,13 +1,17 @@
 package controller;
 
+import io.reactivex.rxjava3.annotations.NonNull;
+import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import model.pokemonStructures.abilityEndpoint.NameInfo;
@@ -19,6 +23,8 @@ import utils.Constants;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainController {
 
@@ -41,6 +47,8 @@ public class MainController {
 
     private MainService service;
 
+    private final ExecutorService executorService = Executors.newFixedThreadPool(4);
+
     @FXML
     public void initialize() {
         service = new MainService();
@@ -51,6 +59,9 @@ public class MainController {
             mainPane.getScene().getWindow().setOnCloseRequest(event -> {
                 if (service != null) {
                     service.shutdown();
+                }
+                if (executorService != null && !executorService.isShutdown()) {
+                    executorService.shutdown();
                 }
             });
         });
@@ -85,14 +96,14 @@ public class MainController {
 
             for (Tab tab : tabPane.getTabs()) {
                 VBox vbox = (VBox) tab.getContent();
-                TableView<TableViewDataStructure> tableView = (TableView<TableViewDataStructure>) vbox.getChildren().get(0);
+                TableView<TableViewDataStructure> tableView = (TableView<TableViewDataStructure>) vbox.getChildren().get(1);
 
                 ObservableList<TableViewDataStructure> tableData = tableView.getItems();
                 for (TableViewDataStructure row : tableData) {
                     if (row.getPokemon().toLowerCase().contains(lowerCaseWord) ||
-                        row.getEnglish().toLowerCase().contains(lowerCaseWord) ||
-                        row.getSpanish().toLowerCase().contains(lowerCaseWord) ||
-                        row.getIsHidden().toLowerCase().contains(lowerCaseWord)) {
+                            row.getEnglish().toLowerCase().contains(lowerCaseWord) ||
+                            row.getSpanish().toLowerCase().contains(lowerCaseWord) ||
+                            row.getIsHidden().toLowerCase().contains(lowerCaseWord)) {
 
                         resultMessage += "\t- " + tab.getText() + "\n";
                         found = true;
@@ -138,7 +149,7 @@ public class MainController {
         return false;
     }
 
-    private void manageTask(String selectedPokemonType){
+    private void manageTask(String selectedPokemonType) {
         Task<Tab> loadDataTask = new Task<>() {
             @Override
             protected Tab call() throws Exception {
@@ -159,27 +170,34 @@ public class MainController {
             alert.showAndWait();
         });
 
-        Thread thread = new Thread(loadDataTask);
-        // setDaemon(true) evita que la app espere a que los hilos se hayan terminado de ejecutar si se intentase cerrar la aplicación.
-        thread.setDaemon(true);
-        thread.start();
+        executorService.submit(loadDataTask);
     }
 
     private Tab createTabForPokemonType(String pokemonTypeTab) {
         Tab tab = new Tab(pokemonTypeTab);
+
+        ProgressBar progressBar = new ProgressBar();
+        progressBar.setProgress(0);
+        Label progressLabel = new Label();
+        progressLabel.setText("0%");
+
+        HBox progressBox = new HBox(10, progressBar, progressLabel);
+        progressBox.setPadding(new Insets(5));
 
         TableView<TableViewDataStructure> pokemonTypeTableView = new TableView<>();
         prepareTableColumns(pokemonTypeTableView);
 
         ObservableList<TableViewDataStructure> pokemonTypeDataList = FXCollections.observableArrayList();
 
-        loadPokemonData(pokemonTypeTab, pokemonTypeDataList);
+        loadPokemonData(pokemonTypeTab, pokemonTypeDataList, progressBar, progressLabel);
 
         pokemonTypeTableView.setItems(pokemonTypeDataList);
         tab.setUserData(pokemonTypeDataList);
 
-        VBox vbox = new VBox();
+        VBox vbox = new VBox(10);
         VBox.setVgrow(pokemonTypeTableView, Priority.ALWAYS);
+
+        vbox.getChildren().add(progressBox);
         vbox.getChildren().add(pokemonTypeTableView);
         tab.setContent(vbox);
 
@@ -201,19 +219,42 @@ public class MainController {
         isHiddenAbilityColumn.setCellValueFactory(new PropertyValueFactory<>("isHidden"));
     }
 
-    private void loadPokemonData(String pokemonTypeTab, ObservableList<TableViewDataStructure> pokemonTypeDataList) {
-        Disposable disposable = service.getPokemonName(Constants.POKEMON_TYPES.get(pokemonTypeTab).toLowerCase())
-                .flatMap(pokemonData -> service.getPokemonAbility(pokemonData.getName())
-                        .flatMap(abilityInfo -> service.getPokemonAbilityTranslation(abilityInfo.getAbility().getName())
-                                .toList()
-                                .map(translations -> new TableViewRow(pokemonData.getName(), abilityInfo, translations))
-                                .toObservable()
-                        )
-                )
+    private void loadPokemonData(String pokemonTypeTab, ObservableList<TableViewDataStructure> pokemonTypeDataList, ProgressBar progressBar, Label progressLabel) {
+        Observable<List<TableViewRow>> pokemonObservable = service.getPokemonName(Constants.POKEMON_TYPES.get(pokemonTypeTab).toLowerCase())
+                .toList()
+                .flatMapObservable(pokemonList -> {
+                    int total = pokemonList.size();
+                    if (total == 0) return Observable.empty();
+
+                    final int[] count = {0};
+
+                    return Observable.fromIterable(pokemonList)
+                            .concatMap(pokemonData ->
+                                    service.getPokemonAbility(pokemonData.getName())
+                                            .concatMap(abilityInfo ->
+                                                    service.getPokemonAbilityTranslation(abilityInfo.getAbility().getName())
+                                                            .toList()
+                                                            .map(translations -> new TableViewRow(pokemonData.getName(), abilityInfo, translations))
+                                                            .toObservable()
+                                            )
+                                            .toList()
+                                            .toObservable()
+                                            .doOnNext(rows -> Platform.runLater(() -> {
+                                                for (TableViewRow row : rows) {
+                                                    processAbilityInfo(row, pokemonTypeDataList);
+                                                }
+
+                                                count[0]++;
+                                                double progress = (double) count[0] / total;
+                                                progressBar.setProgress(progress);
+                                                progressLabel.setText(String.format("%.0f%%", progress * 100));
+                                            }))
+                            );
+                });
+
+        Disposable disposable = pokemonObservable
                 .subscribe(
-                        tableViewRow -> Platform.runLater(() -> {
-                            processAbilityInfo(tableViewRow, pokemonTypeDataList);
-                        }),
+                        item -> {},
                         this::manageError
                 );
 
@@ -261,7 +302,7 @@ public class MainController {
 
         for (Tab tab : tabPane.getTabs()) {
             VBox vbox = (VBox) tab.getContent();
-            TableView<TableViewDataStructure> tableView = (TableView<TableViewDataStructure>) vbox.getChildren().get(0);
+            TableView<TableViewDataStructure> tableView = (TableView<TableViewDataStructure>) vbox.getChildren().get(1);
 
             ObservableList<TableViewDataStructure> originalList = (ObservableList<TableViewDataStructure>) tab.getUserData();
             if (originalList == null) continue;
