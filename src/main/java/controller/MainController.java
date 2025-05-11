@@ -1,6 +1,5 @@
 package controller;
 
-import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import javafx.application.Platform;
@@ -16,15 +15,23 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import model.pokemonStructures.abilityEndpoint.NameInfo;
 import model.viewStructures.TableViewDataStructure;
 import model.viewStructures.TableViewRow;
 import service.MainService;
 import utils.Constants;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -68,6 +75,8 @@ public class MainController {
             });
         });
     }
+
+    //region EVENTS
 
     @FXML
     private void getPokemonDataEvent() {
@@ -121,6 +130,63 @@ public class MainController {
             e.printStackTrace();
         }
     }
+
+    @FXML
+    private void exportCsvEvent(){
+        try {
+            Tab selectedTab = tabPane.getSelectionModel().getSelectedItem();
+            if (selectedTab == null) {
+                showSearchPopup("No hay ninguna pestaña seleccionada.");
+                return;
+            }
+
+            String tabName = selectedTab.getText();
+            VBox vbox = (VBox) selectedTab.getContent();
+            TableView<TableViewDataStructure> tableView = (TableView<TableViewDataStructure>) vbox.getChildren().get(1);
+            ObservableList<TableViewDataStructure> items = tableView.getItems();
+
+            if (items.isEmpty()) {
+                showSearchPopup("No hay datos para exportar.");
+                return;
+            }
+
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Guardar CSV");
+            fileChooser.setInitialFileName(tabName + ".csv");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+
+            File file = fileChooser.showSaveDialog(tabPane.getScene().getWindow());
+            if (file != null){
+                try (OutputStreamWriter writer = new OutputStreamWriter(
+                        new FileOutputStream(file), StandardCharsets.UTF_8)) {
+
+                    // Para que los datos que se guarden en el CSV aparezcan en UTF-8:
+                    writer.write('\uFEFF');
+
+                    writer.write("Pokémon;Habilidad (ing.);Habilidad (esp.);Habilidad oculta\n");
+
+                    for (TableViewDataStructure row : items) {
+                        String line = String.join(";", List.of(
+                                row.getPokemon(),
+                                row.getEnglish(),
+                                row.getSpanish(),
+                                row.getIsHidden()
+                        ));
+                        writer.write(line + "\n");
+                    }
+                    writer.flush();
+                    showSearchPopup("CSV exportado correctamente en:\n" + file.getAbsolutePath());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            showSearchPopup("Error al exportar CSV: " + e.getMessage());
+        }
+    }
+
+    //endregion
+
+    //region METHODS
 
     private void showSearchPopup(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -355,4 +421,6 @@ public class MainController {
             tableView.setItems(filteredList);
         }
     }
+
+    //endregion
 }
